@@ -26,7 +26,7 @@
 
     <!-- Admin account -->
     <p class="login-section-label">Administrator</p>
-    <button class="account-btn is-admin" onclick="login('admin')">
+    <button class="account-btn is-admin" onclick="openAdminModal()">
       <span class="account-icon">🛡️</span>
       <div class="account-info">
         <span class="account-name">Admin</span>
@@ -92,6 +92,33 @@
     </div>
   </div>
 
+  <!-- Admin Password Modal -->
+  <div id="adminModal" class="modal-overlay" onclick="closeAdminModal(event)">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Admin-Anmeldung
+        </div>
+        <div class="modal-subtitle">Bitte geben Sie das Administrator-Passwort ein.</div>
+      </div>
+      <div class="modal-input-wrap">
+        <input type="password" id="adminPassword" placeholder="Passwort …"
+               onkeydown="handlePasswordKey(event)" autocomplete="current-password">
+      </div>
+      <div id="adminPwError" class="modal-error" style="display:none">
+        Falsches Passwort – bitte erneut versuchen.
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeAdminModal()">Abbrechen</button>
+        <button class="btn-confirm" onclick="submitAdminPassword()">Anmelden</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       try {
@@ -99,6 +126,42 @@
         if (u) location.href = u.role === 'admin' ? 'admin.html' : 'client.html';
       } catch {}
     })();
+
+    function openAdminModal() {
+      const modal = document.getElementById('adminModal');
+      const input = document.getElementById('adminPassword');
+      const err   = document.getElementById('adminPwError');
+      input.value = '';
+      err.style.display = 'none';
+      modal.classList.add('open');
+      setTimeout(() => input.focus(), 50);
+    }
+
+    function closeAdminModal(e) {
+      if (e && e.target !== document.getElementById('adminModal')) return;
+      document.getElementById('adminModal').classList.remove('open');
+    }
+
+    function handlePasswordKey(e) {
+      if (e.key === 'Enter')  submitAdminPassword();
+      if (e.key === 'Escape') document.getElementById('adminModal').classList.remove('open');
+    }
+
+    function submitAdminPassword() {
+      const input = document.getElementById('adminPassword');
+      const err   = document.getElementById('adminPwError');
+      if (input.value === 'admin') {
+        document.getElementById('adminModal').classList.remove('open');
+        login('admin');
+      } else {
+        err.style.display = 'block';
+        input.classList.remove('shake');
+        void input.offsetWidth;
+        input.classList.add('shake');
+        input.value = '';
+        input.focus();
+      }
+    }
 
     async function login(username) {
       const allBtns = document.querySelectorAll('.account-btn');
