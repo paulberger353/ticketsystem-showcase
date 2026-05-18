@@ -1,0 +1,92 @@
+/* ─── Shared utilities für alle Seiten ─────────────────────────────────── */
+
+const API = '/api';
+
+function getUser() {
+  try { return JSON.parse(localStorage.getItem('ts_user')); } catch { return null; }
+}
+
+function requireAuth(requiredRole) {
+  const user = getUser();
+  if (!user) { location.href = 'index.html'; return null; }
+  if (requiredRole && user.role !== requiredRole) {
+    location.href = user.role === 'admin' ? 'admin.html' : 'client.html';
+    return null;
+  }
+  return user;
+}
+
+function logout() {
+  localStorage.removeItem('ts_user');
+  location.href = 'index.html';
+}
+
+async function api(path, opts = {}) {
+  const user = getUser();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(user ? { 'X-User-ID': String(user.id) } : {}),
+    ...(opts.headers || {}),
+  };
+  const res = await fetch(API + path, { ...opts, headers });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+/* Status-Farben ──────────────────────────────────────────────────────────── */
+const STATUS_STYLES = {
+  'Konzept':                 { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' },
+  'Entwicklung':             { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+  'Testen':                  { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+  'Optimieren':              { bg: '#ffedd5', color: '#c2410c', border: '#fdba74' },
+  'Bereit zu Abnahme':       { bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
+  'Abgenommen durch Kunden': { bg: '#dcfce7', color: '#15803d', border: '#86efac' },
+};
+
+function statusBadge(status) {
+  const s = STATUS_STYLES[status] || STATUS_STYLES['Konzept'];
+  return `<span class="status-badge" style="background:${s.bg};color:${s.color};border-color:${s.border}">${esc(status)}</span>`;
+}
+
+/* Hilfsfunktionen ────────────────────────────────────────────────────────── */
+function fmtDate(dt) {
+  if (!dt) return '';
+  const d = new Date(dt.endsWith('Z') ? dt : dt + 'Z');
+  return d.toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function avatar(name) {
+  return (name || '?').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* Toast ──────────────────────────────────────────────────────────────────── */
+function showToast(msg, type = 'success') {
+  const container = document.getElementById('toast');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 3200);
+}
+
+/* SVG-Icons ──────────────────────────────────────────────────────────────── */
+const ICON = {
+  chat:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  trash:  `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
+  chevron:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  screen: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+  user:   `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+};

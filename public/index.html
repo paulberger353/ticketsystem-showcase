@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticketsystem – Anmelden</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <line x1="10" y1="9"  x2="8" y2="9"/>
+      </svg>
+    </div>
+    <h1 class="login-title">Ticketsystem</h1>
+    <p class="login-subtitle">Entwicklungs-Fortschritt auf einen Blick</p>
+
+    <p class="login-section-label">Konto auswählen</p>
+
+    <button class="account-btn is-admin" id="btn-admin" onclick="login('admin')">
+      <span class="account-icon">🛡️</span>
+      <div class="account-info">
+        <span class="account-name">Admin</span>
+        <span class="account-role">Administrator · Alle Tickets &amp; Aktionen</span>
+      </div>
+    </button>
+
+    <button class="account-btn" id="btn-karl" onclick="login('karl')">
+      <span class="account-icon">🔧</span>
+      <div class="account-info">
+        <span class="account-name">Karl KFZ</span>
+        <span class="account-role">Kunde · Desktop-Werkstattplaner v2</span>
+      </div>
+    </button>
+
+    <button class="account-btn" id="btn-bob" onclick="login('bob')">
+      <span class="account-icon">🏗️</span>
+      <div class="account-info">
+        <span class="account-name">Bob Baumeister</span>
+        <span class="account-role">Kunde · Bau-Projektplaner WebApp</span>
+      </div>
+    </button>
+
+    <button class="account-btn" id="btn-beate" onclick="login('beate')">
+      <span class="account-icon">🥐</span>
+      <div class="account-info">
+        <span class="account-name">Beate Bäcker</span>
+        <span class="account-role">Kunde · Web-Bestellsystem &amp; App</span>
+      </div>
+    </button>
+
+    <div id="loginError" style="display:none;margin-top:16px" class="error-banner"></div>
+  </div>
+
+  <script>
+    /* Bereits eingeloggt? Weiterleiten */
+    (function () {
+      try {
+        const u = JSON.parse(localStorage.getItem('ts_user'));
+        if (u) location.href = u.role === 'admin' ? 'admin.html' : 'client.html';
+      } catch {}
+    })();
+
+    async function login(username) {
+      const allBtns = document.querySelectorAll('.account-btn');
+      allBtns.forEach(b => (b.disabled = true));
+      const errBox = document.getElementById('loginError');
+      errBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login fehlgeschlagen');
+
+        localStorage.setItem('ts_user', JSON.stringify(data.user));
+        location.href = data.user.role === 'admin' ? 'admin.html' : 'client.html';
+      } catch (err) {
+        errBox.textContent = 'Fehler: ' + err.message;
+        errBox.style.display = 'block';
+        allBtns.forEach(b => (b.disabled = false));
+      }
+    }
+  </script>
+</body>
+</html>

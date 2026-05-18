@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticketsystem – Meine Tickets</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Topbar -->
+  <nav class="topbar">
+    <a class="topbar-logo" href="#">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      Ticketsystem
+    </a>
+    <span class="topbar-spacer"></span>
+    <div class="topbar-user">
+      <span id="userDisplay"></span>
+      <span class="badge badge-client">Kunde</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">Abmelden</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="page-wrapper">
+    <div class="page-header">
+      <h1 class="page-title">Meine Tickets</h1>
+      <p class="page-subtitle">Ihr Entwicklungs-Fortschritt im Überblick</p>
+    </div>
+    <div id="ticketList">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        Tickets werden geladen …
+      </div>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <script src="app.js"></script>
+  <script>
+    /* ── Init ─────────────────────────────────────────────────────────────── */
+    const currentUser = requireAuth('client');
+    if (currentUser) {
+      document.getElementById('userDisplay').textContent = currentUser.display_name;
+      loadTickets();
+    }
+
+    /* ── Tickets laden ────────────────────────────────────────────────────── */
+    async function loadTickets() {
+      const container = document.getElementById('ticketList');
+      try {
+        const { tickets } = await api('/tickets');
+        if (!tickets.length) {
+          container.innerHTML = '<div class="empty-state"><p>Keine Tickets vorhanden.</p></div>';
+          return;
+        }
+        container.innerHTML = tickets.map(renderTicketCard).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="error-banner">Laden fehlgeschlagen: ${esc(err.message)}</div>`;
+      }
+    }
+
+    /* ── Ticket-Karte rendern ─────────────────────────────────────────────── */
+    function renderTicketCard(t) {
+      return `
+        <div class="ticket-card" id="ticket-${t.id}">
+          <div class="ticket-header">
+            <div class="ticket-title-row">
+              <div class="ticket-title">${esc(t.title)}</div>
+              <div class="ticket-meta">
+                ${statusBadge(t.status)}
+                ${t.platform ? `<span class="meta-tag">${ICON.screen} ${esc(t.platform)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          ${t.description
+            ? `<div class="ticket-body">${esc(t.description)}</div>`
+            : ''}
+          <div class="comments-section">
+            <button class="comments-toggle" onclick="toggleComments(this, ${t.id})">
+              ${ICON.chat}
+              Kommentare
+              <span class="caret">${ICON.chevron}</span>
+            </button>
+            <div class="comments-body" id="comments-${t.id}"></div>
+          </div>
+        </div>`;
+    }
+
+    /* ── Kommentare ein-/ausblenden ───────────────────────────────────────── */
+    async function toggleComments(btn, ticketId) {
+      const body = document.getElementById(`comments-${ticketId}`);
+      const open = body.classList.contains('open');
+
+      if (open) {
+        body.classList.remove('open');
+        btn.classList.remove('open');
+        return;
+      }
+
+      btn.classList.add('open');
+      body.classList.add('open');
+
+      if (body.dataset.loaded) return; /* bereits geladen */
+
+      body.innerHTML = `<div class="loading-state" style="padding:18px 0">
+        <div class="spinner" style="width:22px;height:22px;border-width:2px"></div></div>`;
+
+      try {
+        const { comments } = await api(`/tickets/${ticketId}`);
+        body.dataset.loaded = '1';
+        renderCommentBody(body, comments, ticketId);
+      } catch (err) {
+        body.innerHTML = `<div class="error-banner" style="margin:8px 0">${esc(err.message)}</div>`;
+      }
+    }
+
+    /* ── Kommentar-Bereich befüllen ───────────────────────────────────────── */
+    function renderCommentBody(body, comments, ticketId) {
+      const listHTML = comments.length
+        ? comments.map(c => `
+            <div class="comment-item" id="c${c.id}">
+              <div class="comment-avatar">${avatar(c.username)}</div>
+              <div class="comment-content">
+                <div class="comment-header">
+                  <span class="comment-author">${esc(c.username)}</span>
+                  <span class="comment-date">${fmtDate(c.created_at)}</span>
+                </div>
+                <div class="comment-text">${esc(c.text)}</div>
+              </div>
+            </div>`).join('')
+        : '<p class="no-comments">Noch keine Kommentare – schreiben Sie den ersten!</p>';
+
+      body.innerHTML = listHTML + `
+        <form class="comment-form" onsubmit="submitComment(event, ${ticketId})">
+          <textarea placeholder="Kommentar schreiben …" rows="3" required></textarea>
+          <div class="comment-form-actions">
+            <button type="submit" class="btn btn-primary btn-sm">Absenden</button>
+          </div>
+        </form>`;
+    }
+
+    /* ── Kommentar absenden ───────────────────────────────────────────────── */
+    async function submitComment(e, ticketId) {
+      e.preventDefault();
+      const form     = e.currentTarget;
+      const textarea = form.querySelector('textarea');
+      const text     = textarea.value.trim();
+      if (!text) return;
+
+      const submitBtn = form.querySelector('button[type=submit]');
+      submitBtn.disabled    = true;
+      submitBtn.textContent = '…';
+
+      try {
+        await api(`/tickets/${ticketId}/comments`, {
+          method: 'POST',
+          body:   JSON.stringify({ text }),
+        });
+        textarea.value = '';
+        showToast('Kommentar gespeichert ✓');
+
+        /* Kommentarbereich neu laden */
+        const body = document.getElementById(`comments-${ticketId}`);
+        delete body.dataset.loaded;
+        const { comments } = await api(`/tickets/${ticketId}`);
+        body.dataset.loaded = '1';
+        renderCommentBody(body, comments, ticketId);
+      } catch (err) {
+        showToast('Fehler: ' + err.message, 'error');
+        submitBtn.disabled    = false;
+        submitBtn.textContent = 'Absenden';
+      }
+    }
+  </script>
+</body>
+</html>

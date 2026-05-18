@@ -1,0 +1,15 @@
+{
+  "name": "ticketsystem",
+  "version": "1.0.0",
+  "description": "Cloudflare-basiertes Ticket-Management (Pages + Workers + D1)",
+  "scripts": {
+    "dev": "wrangler pages dev public/",
+    "db:schema": "wrangler d1 execute ticketsystem-db --local --file=schema.sql",
+    "db:seed": "wrangler d1 execute ticketsystem-db --local --file=seed.sql",
+    "db:reset": "wrangler d1 execute ticketsystem-db --local --file=schema.sql && wrangler d1 execute ticketsystem-db --local --file=seed.sql",
+    "deploy": "wrangler pages deploy public/"
+  },
+  "devDependencies": {
+    "wrangler": "^3.100.0"
+  }
+}
