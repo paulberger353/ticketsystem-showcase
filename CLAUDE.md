@@ -107,7 +107,7 @@ Diese Aktionen führe ich **niemals** ohne explizite schriftliche Erlaubnis durc
 
 ## Projektziel
 
-**Demo / Portfolio-Projekt** für company.de.
+**Demo / Portfolio-Projekt** für ein internes Unternehmens-Showcase.
 
 Prioritäten in dieser Reihenfolge:
 1. Visuelles Erscheinungsbild und UX
