@@ -9,8 +9,10 @@
 <body class="login-page">
 
   <div class="login-card">
+
+    <!-- Logo & Title -->
     <div class="login-logo">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
         <polyline points="14 2 14 8 20 8"/>
@@ -22,45 +24,75 @@
     <h1 class="login-title">Ticketsystem</h1>
     <p class="login-subtitle">Entwicklungs-Fortschritt auf einen Blick</p>
 
-    <p class="login-section-label">Konto auswählen</p>
-
-    <button class="account-btn is-admin" id="btn-admin" onclick="login('admin')">
+    <!-- Admin account -->
+    <p class="login-section-label">Administrator</p>
+    <button class="account-btn is-admin" onclick="login('admin')">
       <span class="account-icon">🛡️</span>
       <div class="account-info">
         <span class="account-name">Admin</span>
-        <span class="account-role">Administrator · Alle Tickets &amp; Aktionen</span>
+        <span class="account-role">Globale Übersicht · Alle Tickets &amp; Aktionen</span>
       </div>
+      <span class="account-chevron">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </span>
     </button>
 
-    <button class="account-btn" id="btn-karl" onclick="login('karl')">
+    <!-- Divider -->
+    <div class="login-divider">
+      <span class="login-divider-line"></span>
+      <span class="login-section-label">Kundenkonten</span>
+      <span class="login-divider-line"></span>
+    </div>
+
+    <!-- Client accounts -->
+    <button class="account-btn" onclick="login('karl')">
       <span class="account-icon">🔧</span>
       <div class="account-info">
         <span class="account-name">Karl KFZ</span>
-        <span class="account-role">Kunde · Desktop-Werkstattplaner v2</span>
+        <span class="account-role">Desktop-Werkstattplaner v2</span>
       </div>
+      <span class="account-chevron">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </span>
     </button>
 
-    <button class="account-btn" id="btn-bob" onclick="login('bob')">
+    <button class="account-btn" onclick="login('bob')">
       <span class="account-icon">🏗️</span>
       <div class="account-info">
         <span class="account-name">Bob Baumeister</span>
-        <span class="account-role">Kunde · Bau-Projektplaner WebApp</span>
+        <span class="account-role">Bau-Projektplaner WebApp</span>
       </div>
+      <span class="account-chevron">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </span>
     </button>
 
-    <button class="account-btn" id="btn-beate" onclick="login('beate')">
+    <button class="account-btn" onclick="login('beate')">
       <span class="account-icon">🥐</span>
       <div class="account-info">
         <span class="account-name">Beate Bäcker</span>
-        <span class="account-role">Kunde · Web-Bestellsystem &amp; App</span>
+        <span class="account-role">Web-Bestellsystem &amp; App</span>
       </div>
+      <span class="account-chevron">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </span>
     </button>
 
-    <div id="loginError" style="display:none;margin-top:16px" class="error-banner"></div>
+    <div id="loginError" style="display:none;margin-top:14px" class="error-banner"></div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      <span>company.de</span>
+      <span class="login-footer-dot">·</span>
+      <span>Ticketsystem</span>
+    </div>
   </div>
 
   <script>
-    /* Bereits eingeloggt? Weiterleiten */
     (function () {
       try {
         const u = JSON.parse(localStorage.getItem('ts_user'));
@@ -82,7 +114,6 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Login fehlgeschlagen');
-
         localStorage.setItem('ts_user', JSON.stringify(data.user));
         location.href = data.user.role === 'admin' ? 'admin.html' : 'client.html';
       } catch (err) {

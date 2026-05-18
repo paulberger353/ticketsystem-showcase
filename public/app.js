@@ -63,6 +63,13 @@ function avatar(name) {
   return (name || '?').split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
 }
 
+/* Deterministic colour index 0-5 based on username hash */
+function avatarIdx(name) {
+  let h = 0;
+  for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  return h % 6;
+}
+
 function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
