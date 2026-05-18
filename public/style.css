@@ -699,4 +699,74 @@ body {
 
   /* Toast: bottom-center */
   #toast                { left: 12px; right: 12px; bottom: 12px; align-items: center; }
+  .toast-item           { text-align: center; }
 }
+
+/* ─── MOBILE – iOS / TOUCH ENHANCEMENTS ────────────────────────────────────── */
+
+/* Prevent font-size zoom on input focus on iOS (needs >= 16px) */
+@media (max-width: 768px) {
+  .comment-form textarea { font-size: 16px; }
+  input, select          { font-size: 16px; }
+}
+
+/* Minimum 44 × 44 px touch targets (Apple HIG / WCAG 2.5.8) */
+@media (hover: none) and (pointer: coarse) {
+  .comments-toggle   { min-height: 44px; }
+  .btn-logout        { min-height: 44px; padding: 0 14px; }
+  .account-btn       { min-height: 52px; }
+  .btn               { min-height: 40px; }
+  .btn-sm            { min-height: 36px; }
+  .btn-danger.btn-sm { min-height: 34px; }
+
+  /* Remove hover card-lift on touch – avoids stuck hover state */
+  .ticket-card:hover { transform: none; box-shadow: var(--sh-sm); }
+
+  /* Tap highlight colour instead of hover */
+  .comments-toggle:active { background: var(--bg); }
+  .account-btn:active     { background: var(--primary-light); border-color: var(--primary); }
+  .account-btn.is-admin:active { background: #f5f3ff; border-color: #7c3aed; }
+
+  /* Always show chevron on touch – no hover state */
+  .account-chevron { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── MOBILE – TICKET CARD STACKED HEADER (≤ 400 px) ───────────────────────── */
+@media (max-width: 400px) {
+  /* Stack title row + actions vertically */
+  .ticket-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ticket-actions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 4px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  /* Full-width comment submit on tiny screens */
+  .comment-form-actions { justify-content: stretch; }
+  .comment-form-actions .btn { width: 100%; justify-content: center; }
+}
+
+/* ─── MOBILE – SAFE AREA (iPhone notch / Dynamic Island / home bar) ─────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .page-wrapper {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+  #toast {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+  .topbar {
+    padding-left:  max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+}
+
+/* ─── SMOOTH SCROLL & SELECTION ─────────────────────────────────────────────── */
+html                      { scroll-behavior: smooth; }
+::selection               { background: var(--primary-light); color: var(--primary-dark); }
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--r-full); }
+::-webkit-scrollbar-thumb:hover { background: #c1c8d0; }
