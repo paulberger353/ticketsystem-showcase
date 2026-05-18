@@ -126,7 +126,9 @@
             </div>
             <div class="ticket-actions">
               <button class="btn btn-danger btn-sm"
-                      onclick="deleteTicket(${t.id}, ${JSON.stringify(t.title)})">
+                      data-ticket-id="${t.id}"
+                      data-ticket-title="${esc(t.title)}"
+                      onclick="deleteTicket(this)">
                 ${ICON.trash} Löschen
               </button>
             </div>
@@ -199,7 +201,9 @@
     }
 
     /* ── Ticket löschen ───────────────────────────────────────────────────── */
-    async function deleteTicket(ticketId, title) {
+    async function deleteTicket(btn) {
+      const ticketId = parseInt(btn.dataset.ticketId, 10);
+      const title    = btn.dataset.ticketTitle;
       if (!confirm(`Ticket "${title}" und alle zugehörigen Kommentare wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`)) return;
       try {
         await api(`/tickets/${ticketId}`, { method: 'DELETE' });
