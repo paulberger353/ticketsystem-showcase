@@ -74,6 +74,35 @@ function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/* Confirm Dialog ─────────────────────────────────────────────────────────── */
+function showConfirm(title, message = '', confirmLabel = 'Bestätigen', danger = false) {
+  return new Promise(resolve => {
+    document.getElementById('__confirm')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = '__confirm';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-card" style="max-width:380px">
+        <div class="modal-title">${esc(title)}</div>
+        ${message ? `<div class="modal-subtitle">${esc(message)}</div>` : ''}
+        <div class="modal-footer">
+          <button class="btn-cancel" id="__conf-no">Abbrechen</button>
+          <button class="btn-confirm${danger ? ' btn-confirm-danger' : ''}" id="__conf-yes">${esc(confirmLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('open'));
+    const close = r => {
+      overlay.classList.remove('open');
+      setTimeout(() => overlay.remove(), 200);
+      resolve(r);
+    };
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+    document.getElementById('__conf-no').addEventListener('click',  () => close(false));
+    document.getElementById('__conf-yes').addEventListener('click', () => close(true));
+  });
+}
+
 /* Toast ──────────────────────────────────────────────────────────────────── */
 function showToast(msg, type = 'success') {
   const container = document.getElementById('toast');
@@ -96,4 +125,6 @@ const ICON = {
   chevron:`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   screen: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
   user:   `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  edit:   `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  plus:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
 };

@@ -1,12 +1,15 @@
 /**
  * Cloudflare Pages Function – catch-all handler für /api/*
- * Routen:
+ * Routes:
  *   POST   /api/login
+ *   GET    /api/users                  (Admin)
  *   GET    /api/tickets
- *   GET    /api/tickets/:id          (Ticket + Kommentare)
- *   DELETE /api/tickets/:id          (Admin)
+ *   POST   /api/tickets                (Admin)
+ *   GET    /api/tickets/:id
+ *   PATCH  /api/tickets/:id            (Admin)
+ *   DELETE /api/tickets/:id            (Admin)
  *   POST   /api/tickets/:id/comments
- *   DELETE /api/comments/:id         (Admin)
+ *   DELETE /api/comments/:id           (Admin)
  */
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -16,7 +19,7 @@ export async function onRequest(context) {
 
   const CORS = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-User-ID',
   };
 
@@ -38,6 +41,11 @@ export async function onRequest(context) {
     return env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(id).first();
   };
 
+  const VALID_STATUSES = [
+    'Konzept', 'Entwicklung', 'Testen', 'Optimieren',
+    'Bereit zu Abnahme', 'Abgenommen durch Kunden',
+  ];
+
   try {
 
     // ── POST /api/login ──────────────────────────────────────────────────────
@@ -53,6 +61,18 @@ export async function onRequest(context) {
 
       if (!user) return json({ error: 'Benutzer nicht gefunden' }, 404);
       return json({ user });
+    }
+
+    // ── GET /api/users (Admin) ───────────────────────────────────────────────
+    if (s0 === 'users' && !s1 && method === 'GET') {
+      const user = await getUser();
+      if (!user) return json({ error: 'Nicht autorisiert' }, 401);
+      if (user.role !== 'admin') return json({ error: 'Nur Admins' }, 403);
+
+      const { results } = await env.DB
+        .prepare("SELECT id, display_name, username FROM users WHERE role = 'client' ORDER BY display_name")
+        .all();
+      return json({ users: results });
     }
 
     // ── GET /api/tickets ─────────────────────────────────────────────────────
@@ -75,6 +95,36 @@ export async function onRequest(context) {
 
       const { results } = await stmt.all();
       return json({ tickets: results });
+    }
+
+    // ── POST /api/tickets (Admin) ────────────────────────────────────────────
+    if (s0 === 'tickets' && !s1 && method === 'POST') {
+      const user = await getUser();
+      if (!user) return json({ error: 'Nicht autorisiert' }, 401);
+      if (user.role !== 'admin') return json({ error: 'Nur Admins dürfen Tickets erstellen' }, 403);
+
+      const body = await request.json().catch(() => ({}));
+      const title       = (body.title || '').trim();
+      const description = (body.description || '').trim();
+      const platform    = (body.platform || '').trim();
+      const status      = body.status || 'Konzept';
+      const userId      = parseInt(body.user_id, 10);
+
+      if (!title) return json({ error: 'Titel ist erforderlich' }, 400);
+      if (!userId || isNaN(userId)) return json({ error: 'Benutzer ist erforderlich' }, 400);
+      if (!VALID_STATUSES.includes(status)) return json({ error: 'Ungültiger Status' }, 400);
+
+      const result = await env.DB
+        .prepare('INSERT INTO tickets (user_id, title, description, platform, status) VALUES (?, ?, ?, ?, ?)')
+        .bind(userId, title, description, platform, status)
+        .run();
+
+      const ticket = await env.DB
+        .prepare('SELECT t.*, u.display_name AS owner_name FROM tickets t JOIN users u ON t.user_id = u.id WHERE t.id = ?')
+        .bind(result.meta.last_row_id)
+        .first();
+
+      return json({ ticket }, 201);
     }
 
     // ── GET /api/tickets/:id ─────────────────────────────────────────────────
@@ -102,6 +152,55 @@ export async function onRequest(context) {
         .all();
 
       return json({ ticket, comments });
+    }
+
+    // ── PATCH /api/tickets/:id (Admin) ───────────────────────────────────────
+    if (s0 === 'tickets' && s1 && !s2 && method === 'PATCH') {
+      const user = await getUser();
+      if (!user) return json({ error: 'Nicht autorisiert' }, 401);
+      if (user.role !== 'admin') return json({ error: 'Nur Admins dürfen bearbeiten' }, 403);
+
+      const ticketId = parseInt(s1, 10);
+      const body = await request.json().catch(() => ({}));
+
+      const fields = [];
+      const values = [];
+
+      if (body.title !== undefined) {
+        const title = body.title.trim();
+        if (!title) return json({ error: 'Titel darf nicht leer sein' }, 400);
+        fields.push('title = ?');
+        values.push(title);
+      }
+      if (body.description !== undefined) {
+        fields.push('description = ?');
+        values.push(body.description.trim());
+      }
+      if (body.platform !== undefined) {
+        fields.push('platform = ?');
+        values.push(body.platform.trim());
+      }
+      if (body.status !== undefined) {
+        if (!VALID_STATUSES.includes(body.status)) return json({ error: 'Ungültiger Status' }, 400);
+        fields.push('status = ?');
+        values.push(body.status);
+      }
+
+      if (!fields.length) return json({ error: 'Keine Felder zum Aktualisieren' }, 400);
+
+      values.push(ticketId);
+      await env.DB
+        .prepare(`UPDATE tickets SET ${fields.join(', ')} WHERE id = ?`)
+        .bind(...values)
+        .run();
+
+      const ticket = await env.DB
+        .prepare('SELECT t.*, u.display_name AS owner_name FROM tickets t JOIN users u ON t.user_id = u.id WHERE t.id = ?')
+        .bind(ticketId)
+        .first();
+
+      if (!ticket) return json({ error: 'Ticket nicht gefunden' }, 404);
+      return json({ ticket });
     }
 
     // ── DELETE /api/tickets/:id (Admin) ──────────────────────────────────────

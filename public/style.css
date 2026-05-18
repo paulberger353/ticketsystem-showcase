@@ -920,3 +920,122 @@ html                      { scroll-behavior: smooth; }
   85%      { transform: translateX(3px); }
 }
 ::-webkit-scrollbar-thumb:hover { background: #c1c8d0; }
+
+/* ─── SECONDARY BUTTON ──────────────────────────────────────────────────────── */
+.btn-secondary {
+  background: var(--surface);
+  color: var(--primary);
+  border: 1.5px solid var(--primary-border);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+/* ─── FILTER BAR ─────────────────────────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.filter-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 300px;
+}
+.filter-search-wrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--tx-4);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+.filter-search-wrap input {
+  width: 100%;
+  padding: 7px 12px 7px 32px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--tx-1);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.filter-search-wrap input::placeholder { color: var(--tx-4); }
+.filter-search-wrap input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+}
+.filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.filter-pill {
+  padding: 4px 11px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--tx-3);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .13s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.filter-pill:hover { border-color: var(--tx-3); color: var(--tx-2); }
+.filter-pill.active { background: var(--tx-1); color: #fff; border-color: var(--tx-1); }
+
+/* ─── MODAL FORM ELEMENTS ────────────────────────────────────────────────────── */
+.modal-input-wrap select,
+.modal-input-wrap textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--tx-1);
+  background: var(--bg);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.modal-input-wrap select:focus,
+.modal-input-wrap textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  background: var(--surface);
+}
+.modal-input-wrap textarea { resize: vertical; min-height: 80px; line-height: 1.5; font-size: 14px; }
+.modal-input-wrap select { cursor: pointer; appearance: auto; }
+.modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ─── DANGER CONFIRM BUTTON ──────────────────────────────────────────────────── */
+.modal-footer .btn-confirm-danger {
+  background: var(--red);
+  box-shadow: 0 1px 3px rgba(220,38,38,.25);
+}
+.modal-footer .btn-confirm-danger:hover {
+  background: #b91c1c;
+  box-shadow: 0 3px 10px rgba(220,38,38,.35);
+}
+
+/* ─── RESPONSIVE: new components ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .filter-bar { gap: 8px; }
+  .filter-search-wrap { max-width: 100%; flex: 1 1 100%; }
+  .modal-row { grid-template-columns: 1fr; }
+}

@@ -39,8 +39,18 @@
         <h1 class="page-title">Admin-Dashboard</h1>
         <p class="page-subtitle">Globale Übersicht · Alle Tickets und Kommentare verwalten</p>
       </div>
+      <div class="page-header-right">
+        <button class="btn btn-primary" onclick="openCreateModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Neues Ticket
+        </button>
+      </div>
     </div>
     <div id="statsBar" class="stats-bar"></div>
+    <div id="filterBar" class="filter-bar" style="display:none"></div>
     <div id="ticketList">
       <div class="loading-state">
         <div class="spinner"></div>
@@ -49,10 +59,117 @@
     </div>
   </main>
 
+  <!-- Create Ticket Modal -->
+  <div id="createTicketModal" class="modal-overlay" onclick="if(event.target===this)closeCreateModal()">
+    <div class="modal-card">
+      <div class="modal-title">Neues Ticket</div>
+      <div class="modal-subtitle">Erstellen Sie ein Ticket und weisen Sie es einem Kunden zu.</div>
+
+      <label class="modal-label" for="cTitle">Titel *</label>
+      <div class="modal-input-wrap">
+        <input type="text" id="cTitle" placeholder="z.B. Startseite Redesign"
+               onkeydown="if(event.key==='Enter')submitCreate()">
+      </div>
+
+      <div class="modal-row">
+        <div>
+          <label class="modal-label" for="cUser">Kunde *</label>
+          <div class="modal-input-wrap">
+            <select id="cUser"></select>
+          </div>
+        </div>
+        <div>
+          <label class="modal-label" for="cStatus">Status</label>
+          <div class="modal-input-wrap">
+            <select id="cStatus">
+              <option value="Konzept">Konzept</option>
+              <option value="Entwicklung">Entwicklung</option>
+              <option value="Testen">Testen</option>
+              <option value="Optimieren">Optimieren</option>
+              <option value="Bereit zu Abnahme">Bereit zu Abnahme</option>
+              <option value="Abgenommen durch Kunden">Abgenommen durch Kunden</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <label class="modal-label" for="cPlatform">Plattform</label>
+      <div class="modal-input-wrap">
+        <input type="text" id="cPlatform" placeholder="z.B. Desktop, Mobile">
+      </div>
+
+      <label class="modal-label" for="cDesc">Beschreibung</label>
+      <div class="modal-input-wrap">
+        <textarea id="cDesc" placeholder="Optionale Beschreibung …" rows="3"></textarea>
+      </div>
+
+      <div id="createError" class="modal-error" style="display:none"></div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeCreateModal()">Abbrechen</button>
+        <button class="btn-confirm" onclick="submitCreate()">Ticket erstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Ticket Modal -->
+  <div id="editTicketModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal-card">
+      <div class="modal-title">Ticket bearbeiten</div>
+
+      <label class="modal-label" for="eTitle">Titel</label>
+      <div class="modal-input-wrap">
+        <input type="text" id="eTitle" onkeydown="if(event.key==='Enter')submitEdit()">
+      </div>
+
+      <div class="modal-row">
+        <div>
+          <label class="modal-label" for="eStatus">Status</label>
+          <div class="modal-input-wrap">
+            <select id="eStatus">
+              <option value="Konzept">Konzept</option>
+              <option value="Entwicklung">Entwicklung</option>
+              <option value="Testen">Testen</option>
+              <option value="Optimieren">Optimieren</option>
+              <option value="Bereit zu Abnahme">Bereit zu Abnahme</option>
+              <option value="Abgenommen durch Kunden">Abgenommen durch Kunden</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="modal-label" for="ePlatform">Plattform</label>
+          <div class="modal-input-wrap">
+            <input type="text" id="ePlatform" placeholder="z.B. Desktop, Mobile">
+          </div>
+        </div>
+      </div>
+
+      <label class="modal-label" for="eDesc">Beschreibung</label>
+      <div class="modal-input-wrap">
+        <textarea id="eDesc" rows="3" placeholder="Optionale Beschreibung …"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeEditModal()">Abbrechen</button>
+        <button class="btn-confirm" onclick="submitEdit()">Speichern</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast"></div>
   <script src="app.js"></script>
   <script>
+    const STATUS_ORDER = [
+      'Konzept', 'Entwicklung', 'Testen', 'Optimieren',
+      'Bereit zu Abnahme', 'Abgenommen durch Kunden',
+    ];
+
     const currentUser = requireAuth('admin');
+    let allTickets        = [];
+    let clientUsers       = [];
+    let activeStatusFilter = '';
+    let editingTicketId   = null;
+
     if (currentUser) {
       document.getElementById('userDisplay').textContent = currentUser.display_name;
       loadDashboard();
@@ -63,18 +180,16 @@
       const statsEl = document.getElementById('statsBar');
       try {
         const { tickets } = await api('/tickets');
+        allTickets = tickets;
         renderStats(statsEl, tickets);
-        renderTickets(listEl, tickets);
+        renderFilterBar(tickets);
+        applyFilter();
       } catch (err) {
         listEl.innerHTML = `<div class="error-banner">Laden fehlgeschlagen: ${esc(err.message)}</div>`;
       }
     }
 
     function renderStats(el, tickets) {
-      const STATUS_ORDER = [
-        'Konzept', 'Entwicklung', 'Testen', 'Optimieren',
-        'Bereit zu Abnahme', 'Abgenommen durch Kunden',
-      ];
       const counts = {};
       STATUS_ORDER.forEach(s => (counts[s] = 0));
       tickets.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1; });
@@ -96,9 +211,54 @@
           </div>`).join('')}`;
     }
 
+    function renderFilterBar(tickets) {
+      const bar = document.getElementById('filterBar');
+      const usedStatuses = STATUS_ORDER.filter(s => tickets.some(t => t.status === s));
+      bar.innerHTML = `
+        <div class="filter-search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.3" stroke-linecap="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="filterText" placeholder="Ticket suchen …" oninput="applyFilter()">
+        </div>
+        <div class="filter-pills">
+          <button class="filter-pill${activeStatusFilter === '' ? ' active' : ''}"
+                  onclick="setStatusFilter(this, '')">Alle</button>
+          ${usedStatuses.map(s => `
+            <button class="filter-pill${activeStatusFilter === s ? ' active' : ''}"
+                    data-status="${esc(s)}"
+                    onclick="setStatusFilter(this, this.dataset.status)">${esc(s)}</button>`
+          ).join('')}
+        </div>`;
+      bar.style.display = 'flex';
+    }
+
+    function setStatusFilter(btn, status) {
+      activeStatusFilter = status;
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilter();
+    }
+
+    function applyFilter() {
+      const text = (document.getElementById('filterText')?.value || '').trim().toLowerCase();
+      let filtered = allTickets;
+      if (activeStatusFilter) {
+        filtered = filtered.filter(t => t.status === activeStatusFilter);
+      }
+      if (text) {
+        filtered = filtered.filter(t =>
+          t.title.toLowerCase().includes(text) ||
+          (t.owner_name || '').toLowerCase().includes(text)
+        );
+      }
+      renderTickets(document.getElementById('ticketList'), filtered);
+    }
+
     function renderTickets(el, tickets) {
       if (!tickets.length) {
-        el.innerHTML = '<div class="empty-state"><p>Keine Tickets vorhanden.</p></div>';
+        el.innerHTML = '<div class="empty-state"><p>Keine Tickets gefunden.</p></div>';
         return;
       }
       el.innerHTML = tickets.map(renderTicketCard).join('');
@@ -117,6 +277,15 @@
               </div>
             </div>
             <div class="ticket-actions">
+              <button class="btn btn-secondary btn-sm"
+                      data-id="${t.id}"
+                      data-title="${esc(t.title)}"
+                      data-status="${esc(t.status)}"
+                      data-description="${esc(t.description)}"
+                      data-platform="${esc(t.platform)}"
+                      onclick="openEditModal(this)">
+                ${ICON.edit}&nbsp;Bearbeiten
+              </button>
               <button class="btn btn-danger btn-sm"
                       data-ticket-id="${t.id}"
                       data-ticket-title="${esc(t.title)}"
@@ -168,7 +337,9 @@
               <span class="comment-date">${fmtDate(c.created_at)}</span>
               <div class="comment-actions">
                 <button class="btn btn-danger btn-sm"
-                        onclick="deleteComment(${c.id}, ${ticketId})">
+                        data-comment-id="${c.id}"
+                        data-ticket-id="${ticketId}"
+                        onclick="deleteComment(this)">
                   ${ICON.trash}&nbsp;Löschen
                 </button>
               </div>
@@ -181,18 +352,27 @@
     async function deleteTicket(btn) {
       const ticketId = parseInt(btn.dataset.ticketId, 10);
       const title    = btn.dataset.ticketTitle;
-      if (!confirm(`Ticket "${title}" und alle zugehörigen Kommentare wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`)) return;
+      const ok = await showConfirm(
+        'Ticket löschen?',
+        `„${title}" und alle zugehörigen Kommentare werden unwiderruflich gelöscht.`,
+        'Löschen',
+        true
+      );
+      if (!ok) return;
       try {
         await api(`/tickets/${ticketId}`, { method: 'DELETE' });
-        showToast(`Ticket gelöscht`);
+        showToast('Ticket gelöscht');
         await loadDashboard();
       } catch (err) {
         showToast('Fehler: ' + err.message, 'error');
       }
     }
 
-    async function deleteComment(commentId, ticketId) {
-      if (!confirm('Kommentar wirklich löschen?')) return;
+    async function deleteComment(btn) {
+      const commentId = parseInt(btn.dataset.commentId, 10);
+      const ticketId  = parseInt(btn.dataset.ticketId, 10);
+      const ok = await showConfirm('Kommentar löschen?', '', 'Löschen', true);
+      if (!ok) return;
       try {
         await api(`/comments/${commentId}`, { method: 'DELETE' });
         document.getElementById(`c${commentId}`)?.remove();
@@ -203,6 +383,122 @@
         showToast('Kommentar gelöscht');
       } catch (err) {
         showToast('Fehler: ' + err.message, 'error');
+      }
+    }
+
+    /* ── Create Ticket ────────────────────────────────────────────────────── */
+    async function openCreateModal() {
+      if (!clientUsers.length) {
+        try {
+          const { users } = await api('/users');
+          clientUsers = users;
+        } catch (err) {
+          showToast('Fehler beim Laden der Benutzer: ' + err.message, 'error');
+          return;
+        }
+      }
+      document.getElementById('cUser').innerHTML =
+        clientUsers.map(u => `<option value="${u.id}">${esc(u.display_name)}</option>`).join('');
+      document.getElementById('cTitle').value    = '';
+      document.getElementById('cStatus').value   = 'Konzept';
+      document.getElementById('cPlatform').value = '';
+      document.getElementById('cDesc').value     = '';
+      const errEl = document.getElementById('createError');
+      errEl.style.display = 'none';
+      errEl.textContent   = '';
+      document.getElementById('createTicketModal').classList.add('open');
+      setTimeout(() => document.getElementById('cTitle').focus(), 80);
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createTicketModal').classList.remove('open');
+    }
+
+    async function submitCreate() {
+      const title       = document.getElementById('cTitle').value.trim();
+      const userId      = parseInt(document.getElementById('cUser').value, 10);
+      const status      = document.getElementById('cStatus').value;
+      const platform    = document.getElementById('cPlatform').value.trim();
+      const description = document.getElementById('cDesc').value.trim();
+      const errEl       = document.getElementById('createError');
+
+      if (!title) {
+        errEl.textContent   = 'Bitte einen Titel eingeben.';
+        errEl.style.display = 'flex';
+        const input = document.getElementById('cTitle');
+        input.classList.add('shake');
+        setTimeout(() => input.classList.remove('shake'), 400);
+        return;
+      }
+
+      const btn = document.querySelector('#createTicketModal .btn-confirm');
+      btn.disabled    = true;
+      btn.textContent = '…';
+      errEl.style.display = 'none';
+
+      try {
+        await api('/tickets', {
+          method: 'POST',
+          body: JSON.stringify({ title, user_id: userId, status, platform, description }),
+        });
+        closeCreateModal();
+        showToast('Ticket erstellt');
+        await loadDashboard();
+      } catch (err) {
+        errEl.textContent   = err.message;
+        errEl.style.display = 'flex';
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Ticket erstellen';
+      }
+    }
+
+    /* ── Edit Ticket ──────────────────────────────────────────────────────── */
+    function openEditModal(btn) {
+      editingTicketId = parseInt(btn.dataset.id, 10);
+      document.getElementById('eTitle').value    = btn.dataset.title       || '';
+      document.getElementById('eStatus').value   = btn.dataset.status      || 'Konzept';
+      document.getElementById('ePlatform').value = btn.dataset.platform    || '';
+      document.getElementById('eDesc').value     = btn.dataset.description || '';
+      document.getElementById('editTicketModal').classList.add('open');
+      setTimeout(() => document.getElementById('eTitle').focus(), 80);
+    }
+
+    function closeEditModal() {
+      document.getElementById('editTicketModal').classList.remove('open');
+      editingTicketId = null;
+    }
+
+    async function submitEdit() {
+      const title       = document.getElementById('eTitle').value.trim();
+      const status      = document.getElementById('eStatus').value;
+      const platform    = document.getElementById('ePlatform').value.trim();
+      const description = document.getElementById('eDesc').value.trim();
+
+      if (!title) {
+        const input = document.getElementById('eTitle');
+        input.classList.add('shake');
+        setTimeout(() => input.classList.remove('shake'), 400);
+        return;
+      }
+
+      const btn = document.querySelector('#editTicketModal .btn-confirm');
+      btn.disabled    = true;
+      btn.textContent = '…';
+
+      try {
+        await api(`/tickets/${editingTicketId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ title, status, platform, description }),
+        });
+        closeEditModal();
+        showToast('Ticket aktualisiert');
+        await loadDashboard();
+      } catch (err) {
+        showToast('Fehler: ' + err.message, 'error');
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Speichern';
       }
     }
   </script>
