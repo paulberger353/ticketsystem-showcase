@@ -705,16 +705,19 @@ body {
   .toast-item           { text-align: center; }
 
   /* Modal: bottom-sheet slide-up */
-  .modal-overlay        { align-items: flex-end; }
-  .modal-card           {
+  .modal-overlay.open             { align-items: flex-end; }
+  .modal-card                     {
     width: 100%;
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     padding: 20px 20px max(28px, env(safe-area-inset-bottom, 20px));
-    transform: translateY(100%);
+    animation: sheetSlideIn .28s cubic-bezier(.22,1,.36,1) forwards;
   }
-  .modal-overlay.open .modal-card { transform: translateY(0); }
+  @keyframes sheetSlideIn {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .modal-input-wrap input         { font-size: 16px; }
-  .modal-footer         { flex-direction: column-reverse; gap: 8px; margin-top: 14px; }
+  .modal-footer                   { flex-direction: column-reverse; gap: 8px; margin-top: 14px; }
   .modal-footer .btn-cancel,
   .modal-footer .btn-confirm      { width: 100%; justify-content: center; padding: 13px; font-size: .9rem; }
   .modal-handle                   { display: block; }
@@ -780,16 +783,25 @@ html                      { scroll-behavior: smooth; }
 
 /* ─── ADMIN PASSWORD MODAL ───────────────────────────────────────────────────── */
 .modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 200;
-  opacity: 0; visibility: hidden;
-  transition: opacity .22s ease, visibility .22s ease;
+  display: none;              /* fully out of layout when closed */
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.48);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  overflow: hidden;
 }
-.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal-overlay.open {
+  display: flex;
+  animation: overlayFadeIn .18s ease forwards;
+}
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 
 .modal-card {
   background: var(--surface);
@@ -797,10 +809,12 @@ html                      { scroll-behavior: smooth; }
   box-shadow: var(--sh-xl);
   padding: 32px 32px 28px;
   width: min(400px, calc(100vw - 40px));
-  transform: translateY(14px) scale(.97);
-  transition: transform .24s cubic-bezier(.22,1,.36,1);
+  animation: modalCardIn .26s cubic-bezier(.22,1,.36,1) forwards;
 }
-.modal-overlay.open .modal-card { transform: translateY(0) scale(1); }
+@keyframes modalCardIn {
+  from { opacity: 0; transform: translateY(16px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);   }
+}
 
 /* Drag handle — visible only on mobile bottom-sheet (hidden on desktop via opacity) */
 .modal-handle {
