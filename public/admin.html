@@ -159,17 +159,13 @@
 
   <div id="toast"></div>
   <script src="app.js"></script>
+  <script src="store.js"></script>
   <script>
-    const STATUS_ORDER = [
-      'Konzept', 'Entwicklung', 'Testen', 'Optimieren',
-      'Bereit zu Abnahme', 'Abgenommen durch Kunden',
-    ];
-
     const currentUser = requireAuth('admin');
-    let allTickets        = [];
-    let clientUsers       = [];
+    let allTickets         = [];
+    let clientUsers        = [];
     let activeStatusFilter = '';
-    let editingTicketId   = null;
+    let editingTicketId    = null;
 
     if (currentUser) {
       document.getElementById('userDisplay').textContent = currentUser.display_name;
@@ -180,8 +176,10 @@
       const listEl  = document.getElementById('ticketList');
       const statsEl = document.getElementById('statsBar');
       try {
-        const { tickets } = await api('/tickets');
+        await Store.init();
+        const tickets = Store.getTickets(currentUser);
         allTickets = tickets;
+        clientUsers = Store.getClientUsers();
         renderStats(statsEl, tickets);
         renderFilterBar(tickets);
         applyFilter();
@@ -306,22 +304,14 @@
         </div>`;
     }
 
-    async function toggleComments(btn, ticketId) {
+    function toggleComments(btn, ticketId) {
       const body = document.getElementById(`comments-${ticketId}`);
       const open = body.classList.contains('open');
       if (open) { body.classList.remove('open'); btn.classList.remove('open'); return; }
       btn.classList.add('open');
       body.classList.add('open');
-      if (body.dataset.loaded) return;
-      body.innerHTML = `<div class="loading-state" style="padding:16px 0">
-        <div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
-      try {
-        const { comments } = await api(`/tickets/${ticketId}`);
-        body.dataset.loaded = '1';
-        renderAdminComments(body, comments, ticketId);
-      } catch (err) {
-        body.innerHTML = `<div class="error-banner" style="margin:8px 0">${esc(err.message)}</div>`;
-      }
+      const ticket = Store.getTicket(ticketId);
+      renderAdminComments(body, ticket.comments, ticketId);
     }
 
     function renderAdminComments(body, comments, ticketId) {
@@ -360,13 +350,9 @@
         true
       );
       if (!ok) return;
-      try {
-        await api(`/tickets/${ticketId}`, { method: 'DELETE' });
-        showToast('Ticket gelöscht');
-        await loadDashboard();
-      } catch (err) {
-        showToast('Fehler: ' + err.message, 'error');
-      }
+      Store.deleteTicket(ticketId);
+      showToast('Ticket gelöscht');
+      await loadDashboard();
     }
 
     async function deleteComment(btn) {
@@ -374,30 +360,17 @@
       const ticketId  = parseInt(btn.dataset.ticketId, 10);
       const ok = await showConfirm('Kommentar löschen?', '', 'Löschen', true);
       if (!ok) return;
-      try {
-        await api(`/comments/${commentId}`, { method: 'DELETE' });
-        document.getElementById(`c${commentId}`)?.remove();
-        const body = document.getElementById(`comments-${ticketId}`);
-        if (body && !body.querySelector('.comment-item')) {
-          body.innerHTML = '<p class="no-comments">Keine Kommentare vorhanden.</p>';
-        }
-        showToast('Kommentar gelöscht');
-      } catch (err) {
-        showToast('Fehler: ' + err.message, 'error');
+      Store.deleteComment(ticketId, commentId);
+      document.getElementById(`c${commentId}`)?.remove();
+      const body = document.getElementById(`comments-${ticketId}`);
+      if (body && !body.querySelector('.comment-item')) {
+        body.innerHTML = '<p class="no-comments">Keine Kommentare vorhanden.</p>';
       }
+      showToast('Kommentar gelöscht');
     }
 
     /* ── Create Ticket ────────────────────────────────────────────────────── */
-    async function openCreateModal() {
-      if (!clientUsers.length) {
-        try {
-          const { users } = await api('/users');
-          clientUsers = users;
-        } catch (err) {
-          showToast('Fehler beim Laden der Benutzer: ' + err.message, 'error');
-          return;
-        }
-      }
+    function openCreateModal() {
       document.getElementById('cUser').innerHTML =
         clientUsers.map(u => `<option value="${u.id}">${esc(u.display_name)}</option>`).join('');
       document.getElementById('cTitle').value    = '';
@@ -432,26 +405,11 @@
         return;
       }
 
-      const btn = document.querySelector('#createTicketModal .btn-confirm');
-      btn.disabled    = true;
-      btn.textContent = '…';
       errEl.style.display = 'none';
-
-      try {
-        await api('/tickets', {
-          method: 'POST',
-          body: JSON.stringify({ title, user_id: userId, status, platform, description }),
-        });
-        closeCreateModal();
-        showToast('Ticket erstellt');
-        await loadDashboard();
-      } catch (err) {
-        errEl.textContent   = err.message;
-        errEl.style.display = 'flex';
-      } finally {
-        btn.disabled    = false;
-        btn.textContent = 'Ticket erstellen';
-      }
+      Store.createTicket({ title, user_id: userId, status, platform, description });
+      closeCreateModal();
+      showToast('Ticket erstellt');
+      await loadDashboard();
     }
 
     /* ── Edit Ticket ──────────────────────────────────────────────────────── */
@@ -483,24 +441,10 @@
         return;
       }
 
-      const btn = document.querySelector('#editTicketModal .btn-confirm');
-      btn.disabled    = true;
-      btn.textContent = '…';
-
-      try {
-        await api(`/tickets/${editingTicketId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ title, status, platform, description }),
-        });
-        closeEditModal();
-        showToast('Ticket aktualisiert');
-        await loadDashboard();
-      } catch (err) {
-        showToast('Fehler: ' + err.message, 'error');
-      } finally {
-        btn.disabled    = false;
-        btn.textContent = 'Speichern';
-      }
+      Store.updateTicket(editingTicketId, { title, status, platform, description });
+      closeEditModal();
+      showToast('Ticket aktualisiert');
+      await loadDashboard();
     }
   </script>
 </body>

@@ -1,7 +1,5 @@
 /* ─── Shared utilities für alle Seiten ─────────────────────────────────── */
 
-const API = '/api';
-
 function getUser() {
   try { return JSON.parse(localStorage.getItem('ts_user')); } catch { return null; }
 }
@@ -19,19 +17,6 @@ function requireAuth(requiredRole) {
 function logout() {
   localStorage.removeItem('ts_user');
   location.href = 'index.html';
-}
-
-async function api(path, opts = {}) {
-  const user = getUser();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(user ? { 'X-User-ID': String(user.id) } : {}),
-    ...(opts.headers || {}),
-  };
-  const res = await fetch(API + path, { ...opts, headers });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
 }
 
 /* Status-Farben ──────────────────────────────────────────────────────────── */

@@ -1,0 +1,40 @@
+{
+  "users": [
+    { "id": 1, "username": "admin", "role": "admin",  "display_name": "Admin" },
+    { "id": 2, "username": "karl",  "role": "client", "display_name": "Karl KFZ" },
+    { "id": 3, "username": "bob",   "role": "client", "display_name": "Bob Baumeister" },
+    { "id": 4, "username": "beate", "role": "client", "display_name": "Beate Bäcker" }
+  ],
+  "tickets": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "title": "Desktop-Werkstattplaner v2",
+      "platform": "Desktop (Windows)",
+      "status": "Entwicklung",
+      "description": "Modernisierung des bestehenden Werkstattplaners für KFZ-Werkstätten. Geplante Features: digitale Terminplanung, Kundenverwaltung, automatische Rechnungsstellung und Lagerverwaltung.",
+      "created_at": "2026-05-14T09:20:00Z",
+      "comments": []
+    },
+    {
+      "id": 2,
+      "user_id": 3,
+      "title": "Bau-Projektplaner WebApp",
+      "platform": "Web (Browser)",
+      "status": "Testen",
+      "description": "Webbasierte Anwendung zur Verwaltung von Bauprojekten. Funktionen: Bauzeitenplanung, Ressourcenverwaltung, Fortschrittsberichte und zentralisierte Dokumentenablage.",
+      "created_at": "2026-04-02T11:45:00Z",
+      "comments": []
+    },
+    {
+      "id": 3,
+      "user_id": 4,
+      "title": "Web-Bestellsystem & App",
+      "platform": "Web + Mobile (iOS/Android)",
+      "status": "Konzept",
+      "description": "Online-Bestellsystem für eine Bäckerei mit mobiler App-Komponente. Features: digitaler Produktkatalog, Online-Vorbestellungen, Abholzeitverwaltung und Kundenkonto mit Bestellhistorie.",
+      "created_at": "2026-06-20T08:05:00Z",
+      "comments": []
+    }
+  ]
+}

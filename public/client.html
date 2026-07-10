@@ -51,6 +51,7 @@
 
   <div id="toast"></div>
   <script src="app.js"></script>
+  <script src="store.js"></script>
   <script>
     const currentUser = requireAuth('client');
     if (currentUser) {
@@ -61,7 +62,8 @@
     async function loadTickets() {
       const container = document.getElementById('ticketList');
       try {
-        const { tickets } = await api('/tickets');
+        await Store.init();
+        const tickets = Store.getTickets(currentUser);
         if (!tickets.length) {
           container.innerHTML = '<div class="empty-state"><p>Keine Tickets vorhanden.</p></div>';
           return;
@@ -95,22 +97,14 @@
         </div>`;
     }
 
-    async function toggleComments(btn, ticketId) {
+    function toggleComments(btn, ticketId) {
       const body = document.getElementById(`comments-${ticketId}`);
       const open = body.classList.contains('open');
       if (open) { body.classList.remove('open'); btn.classList.remove('open'); return; }
       btn.classList.add('open');
       body.classList.add('open');
-      if (body.dataset.loaded) return;
-      body.innerHTML = `<div class="loading-state" style="padding:16px 0">
-        <div class="spinner" style="width:20px;height:20px;border-width:2px"></div></div>`;
-      try {
-        const { comments } = await api(`/tickets/${ticketId}`);
-        body.dataset.loaded = '1';
-        renderCommentBody(body, comments, ticketId);
-      } catch (err) {
-        body.innerHTML = `<div class="error-banner" style="margin:8px 0">${esc(err.message)}</div>`;
-      }
+      const ticket = Store.getTicket(ticketId);
+      renderCommentBody(body, ticket.comments, ticketId);
     }
 
     function renderCommentBody(body, comments, ticketId) {
@@ -137,32 +131,16 @@
         </form>`;
     }
 
-    async function submitComment(e, ticketId) {
+    function submitComment(e, ticketId) {
       e.preventDefault();
-      const form      = e.currentTarget;
-      const textarea  = form.querySelector('textarea');
-      const text      = textarea.value.trim();
+      const form     = e.currentTarget;
+      const textarea = form.querySelector('textarea');
+      const text     = textarea.value.trim();
       if (!text) return;
-      const submitBtn = form.querySelector('button[type=submit]');
-      submitBtn.disabled    = true;
-      submitBtn.textContent = '…';
-      try {
-        await api(`/tickets/${ticketId}/comments`, {
-          method: 'POST',
-          body:   JSON.stringify({ text }),
-        });
-        textarea.value = '';
-        showToast('Kommentar gespeichert');
-        const body = document.getElementById(`comments-${ticketId}`);
-        delete body.dataset.loaded;
-        const { comments } = await api(`/tickets/${ticketId}`);
-        body.dataset.loaded = '1';
-        renderCommentBody(body, comments, ticketId);
-      } catch (err) {
-        showToast('Fehler: ' + err.message, 'error');
-        submitBtn.disabled    = false;
-        submitBtn.textContent = 'Absenden';
-      }
+      Store.addComment(ticketId, { user_id: currentUser.id, username: currentUser.display_name, text });
+      showToast('Kommentar gespeichert');
+      const body = document.getElementById(`comments-${ticketId}`);
+      renderCommentBody(body, Store.getTicket(ticketId).comments, ticketId);
     }
   </script>
 </body>
