@@ -46,7 +46,7 @@ Pushen:      NUR auf explizite Anweisung des Nutzers
 ```
 
 - Commit-Message-Stil an bisherige Messages anpassen (Imperativ, Englisch, prägnant).
-- `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>` immer anhängen.
+- `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` immer anhängen (Modellname an die aktuelle Session anpassen).
 - Dateien spezifisch stagen (nie `git add -A` oder `git add .`).
 
 ---
@@ -90,7 +90,6 @@ Diese Aktionen führe ich **niemals** ohne explizite schriftliche Erlaubnis durc
 | `git push --force` | Irreversibel, kann Remote-History zerstören |
 | Branch löschen (`git branch -D`) | Irreversibel |
 | `npm install <paket>` / neue Abhängigkeit | Verändert Projekt-Footprint und Sicherheitsfläche |
-| `seed.sql` remote ausführen | Manipuliert Produktionsdaten der Demo-DB |
 
 ---
 
@@ -98,10 +97,7 @@ Diese Aktionen führe ich **niemals** ohne explizite schriftliche Erlaubnis durc
 
 | Bereich | Regel |
 |---|---|
-| `seed.sql` / Remote-D1-Daten | Nie eigenständig ausführen oder manipulieren |
-| `wrangler.toml` `database_id` | Nur auf expliziten Befehl ändern |
-| Login-Flow / `requireAuth()` | Änderungen kurz ankündigen (Sicherheitsrelevanz) |
-| `functions/api/[[route]].js` Auth-Pfade | Änderungen kurz ankündigen |
+| Login-Flow / `requireAuth()` in `app.js` | Änderungen kurz ankündigen (Sicherheitsrelevanz) |
 
 ---
 
@@ -123,4 +119,4 @@ aber nicht auf Kosten von Optik oder Feature-Vollständigkeit.
 ## Weiterführende Dokumente
 
 - [`claude/architecture.md`](claude/architecture.md) — Tech-Stack, Dateistruktur, Muster
-- [`claude/conventions.md`](claude/conventions.md) — Naming, CSS-Konventionen, API-Muster
+- [`claude/conventions.md`](claude/conventions.md) — Naming, CSS-Konventionen, State-Muster

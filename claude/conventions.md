@@ -6,13 +6,16 @@
 | Art | Stil | Beispiel |
 |---|---|---|
 | Variablen / Funktionen | camelCase | `renderTicketCard`, `ticketId` |
-| Konstanten (module-level) | UPPER_SNAKE | `STATUS_STYLES`, `ICON`, `API` |
+| Konstanten (module-level) | UPPER_SNAKE | `STATUS_ORDER`, `ICON` |
 | DOM-IDs | kebab-case | `ticket-42`, `comments-42` |
 | CSS-Klassen | kebab-case | `ticket-card`, `btn-danger` |
 
-### API-Calls
-Immer über die zentrale `api(path, opts)` Funktion in `app.js`.
-Nie `fetch()` direkt verwenden — `api()` setzt automatisch den `X-User-ID`-Header.
+### State-Mutationen
+Immer über die `Store.*` Funktionen in `store.js` (`createTicket`,
+`updateTicket`, `deleteTicket`, `addComment`, `deleteComment`, …).
+Nie das interne `data`-Objekt in `store.js` direkt von außen mutieren.
+Nach einer Mutation, die den Status ändert, `patchTicketCard()` statt
+eines vollständigen Re-Renders verwenden, damit die Timeline animiert.
 
 ### Template Literals (HTML in JS)
 - User-Content immer durch `esc()` escapen
@@ -28,8 +31,10 @@ Nie `fetch()` direkt verwenden — `api()` setzt automatisch den `X-User-ID`-Hea
 ```
 
 ### Error Handling
-- API-Fehler immer mit `showToast('Fehler: ' + err.message, 'error')` anzeigen
-- Lade-Fehler als `error-banner` in den Container rendern (nicht als Toast)
+- Fehler aus User-Aktionen (Speichern, Löschen, …) mit
+  `showToast('Fehler: ' + err.message, 'error')` anzeigen
+- Lade-Fehler (z.B. `data/seed.json` nicht erreichbar) als `error-banner`
+  in den Container rendern (nicht als Toast)
 - Kein `try/catch` für Logik, die nicht fehlschlagen kann
 
 ## CSS
@@ -39,24 +44,30 @@ Immer CSS Custom Properties aus `:root` verwenden — keine Hard-coded Werte.
 Neue Variablen in `:root` definieren, bevor sie verwendet werden.
 
 ### Status-Farben
-Werden in zwei Stellen gesetzt und müssen synchron bleiben:
-1. `STATUS_STYLES` Objekt in `app.js` (für `.status-badge`)
-2. `[data-status="..."]` Selektoren in `style.css` (für linke Karten-Border)
+Leben ausschließlich in **einer** Stelle: dem `[data-status="..."]`-
+Regelblock am Anfang von `style.css`, der `--accent`/`--accent-bg`/
+`--accent-border` setzt. Jedes Element, das eine Statusfarbe braucht
+(Badge, Ticket-Karte, Timeline-Knoten, Kanban-Spalte), bekommt einfach
+selbst das `data-status`-Attribut — kein JS-Duplikat, keine zweite Quelle.
 
 ### Avatar-Farben
 Werden via `data-idx` Attribut gesetzt. Index 0–5 deterministisch aus `avatarIdx(name)`.
 Farbpalette in `style.css` unter `.comment-avatar[data-idx="N"]`.
 
 ### Media Queries – Reihenfolge in style.css
-1. Base styles
-2. Component styles
-3. `@media (max-width: 768px)` — Tablet
-4. `@media (max-width: 480px)` — Mobile
-5. `@media (max-width: 400px)` — Tiny
+1. Reset & `:root` Tokens (inkl. `[data-status]`-Block)
+2. Component styles (Topbar, Cards, Timeline, Comments, Buttons, Login,
+   States, Toast, Modals, Filter-Bar, Kanban)
+3. Utilities (scroll, selection, scrollbar)
+4. `@media (max-width: 768px)` — Tablet
+5. `@media (max-width: 480px)` — Mobile
 6. `@media (hover: none) and (pointer: coarse)` — Touch
-7. `@supports (padding-bottom: env(...))` — iOS Safe Area
-8. Utilities (scroll, selection, scrollbar)
-9. Modals / Overlays
+7. `@media (max-width: 400px)` — Tiny
+8. `@supports (padding-bottom: env(...))` — iOS Safe Area
+
+Neue Komponenten werden im Component-Block ergänzt (nicht als separater
+Abschnitt am Dateiende), responsive Anpassungen dafür in die passende
+Media-Query oben.
 
 ### iOS Zoom-Verhinderung
 Alle `<input>` und `<textarea>` Elemente müssen bei `≤768px` mindestens `font-size: 16px`
@@ -87,15 +98,8 @@ Stil-Referenz aus bisherigen Commits:
 - `Optimized GUI for Mobile`
 - `Implemented Loginsystem for admin`
 
-Immer mit Co-Author-Zeile abschließen:
+Immer mit Co-Author-Zeile abschließen (Modellname an die jeweils
+aktuelle Session anpassen):
 ```
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 ```
-
-## Pages Function (Backend)
-
-- Alle Routen in `functions/api/[[route]].js` — kein Split in mehrere Dateien
-- CORS-Header auf **jeder** Response setzen (inkl. OPTIONS preflight)
-- Auth-Check: `request.headers.get('X-User-ID')` → D1-Lookup
-- Nach INSERT: neue Row via `result.meta.last_row_id` zurücklesen
-- Fehlermeldungen immer als `{ error: "..." }` mit passendem HTTP-Status

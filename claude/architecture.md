@@ -4,11 +4,13 @@
 
 | Layer | Technologie |
 |---|---|
-| Hosting | Cloudflare Pages |
-| Backend | Cloudflare Pages Functions (`functions/api/[[route]].js`) |
-| Datenbank | Cloudflare D1 (SQLite, Region WEUR) |
+| Hosting | Cloudflare Pages (rein statisch, keine Functions/Bindings) |
+| Daten | `public/data/seed.json` + In-Memory State (`public/store.js`) |
 | Frontend | Vanilla HTML + CSS + JS (kein Framework) |
 | CLI | `npx wrangler` (portables Node, nicht im PATH) |
+
+Es gibt **keinen Server-Code** und **keine Datenbank**. Die App ist eine
+statische Seite; sämtliche Logik läuft im Browser.
 
 ## Dateistruktur
 
@@ -18,29 +20,27 @@ Ticketsystem/
 ├── claude/                       ← Claude-Kontext-Ordner
 │   ├── architecture.md
 │   └── conventions.md
-├── wrangler.toml                 ← Cloudflare-Config (D1-Binding: "DB")
-├── schema.sql                    ← DB-Schema (einmalig remote ausgeführt)
-├── seed.sql                      ← Demo-Daten (SENSIBEL – nicht eigenständig ausführen)
-├── functions/
-│   └── api/
-│       └── [[route]].js          ← Catch-all Pages Function (gesamtes API)
-└── public/                       ← Statische Frontend-Dateien
-    ├── index.html                ← Login-Seite
-    ├── client.html               ← Kunden-Ansicht (eigene Tickets + Kommentare)
-    ├── admin.html                ← Admin-Ansicht (alle Tickets, Löschen)
+├── wrangler.toml                 ← Cloudflare-Config (rein statisches Pages-Deployment)
+└── public/                       ← Statische Frontend-Dateien (= gesamte App)
+    ├── index.html                ← Login-Seite (Account-Auswahl)
+    ├── client.html                ← Kunden-Ansicht (eigene Tickets + Kommentare)
+    ├── admin.html                 ← Admin-Ansicht (alle Tickets, Liste + Kanban-Board)
     ├── app.js                    ← Geteilte Utilities (alle Seiten)
+    ├── store.js                  ← In-Memory State/CRUD (ersetzt die frühere API)
+    ├── data/seed.json            ← Hartcodierte Demo-Daten (User + Tickets)
     └── style.css                 ← Design System + Responsive Styles
 ```
 
-## Datenbank-Schema
+## Datenmodell (`public/data/seed.json`)
 
-```sql
+```
 users    (id, username, role, display_name)
-tickets  (id, user_id, title, platform, status, description)
-comments (id, ticket_id, user_id, username, text, created_at)
+tickets  (id, user_id, title, platform, status, description, created_at, comments[])
+comments (id, user_id, username, text, created_at) — verschachtelt im Ticket
 ```
 
-**Status-Werte** (exakt, keine anderen verwenden):
+**Status-Werte** (exakt, keine anderen verwenden — auch `STATUS_ORDER` in
+`store.js`):
 `Konzept` | `Entwicklung` | `Testen` | `Optimieren` | `Bereit zu Abnahme` | `Abgenommen durch Kunden`
 
 **User-Accounts:**
@@ -51,49 +51,92 @@ comments (id, ticket_id, user_id, username, text, created_at)
 | bob      | client | Bob Baumeister  |
 | beate    | client | Beate Bäcker    |
 
-## API-Routen (`/api/...`)
+## State Module (`public/store.js`)
 
-| Method | Pfad | Auth | Beschreibung |
-|--------|------|------|---|
-| POST | `/login` | — | Setzt Session via `X-User-ID`-Header |
-| GET | `/tickets` | User | Admin: alle; Client: eigene |
-| DELETE | `/tickets/:id` | Admin | Löscht Ticket + alle Kommentare |
-| GET | `/tickets/:id` | User | Ticket + Kommentare |
-| POST | `/tickets/:id/comments` | User | Kommentar hinzufügen |
-| DELETE | `/comments/:id` | Admin | Einzelnen Kommentar löschen |
+Lädt `data/seed.json` einmal pro Seitenaufruf (`Store.init()`, idempotent
+via internem Promise-Cache) in ein In-Memory-Objekt (`structuredClone` —
+das Original bleibt unangetastet). Alle Mutationen passieren nur im
+Speicher; nichts wird zurückgeschrieben. **Ein Hard-Refresh oder eine neue
+Seiten-Navigation lädt die Seed-Daten erneut frisch — jede Änderung
+(Tickets, Kommentare, Status) geht dabei verloren.** Das ist gewollt: die
+App ist eine Demo ohne Persistenz.
+
+Öffentliche Funktionen:
+- `init()` — lädt/cached die Seed-Daten
+- `findUserByUsername(username)`, `getClientUsers()`
+- `getTickets(user)`, `getTicket(id)` — geben Tickets inkl. `owner_name` zurück
+- `createTicket(fields)`, `updateTicket(id, patch)`, `deleteTicket(id)`
+- `addComment(ticketId, {user_id, username, text})`, `deleteComment(ticketId, commentId)`
+
+`STATUS_ORDER` (globales Array, ebenfalls in `store.js`) ist die einzige
+Quelle der Wahrheit für Reihenfolge und Namen der 6 Status — wird von
+Timeline, Kanban-Spalten und Stats-Bar gemeinsam genutzt.
 
 ## Authentifizierung (Demo-Modus)
 
-Kein echtes JWT/Session-System. Der User wird in `localStorage` unter `ts_user`
-gespeichert. Jede API-Request schickt `X-User-ID: <id>` im Header.
-Die Worker-Funktion schlägt die ID gegen die D1-`users`-Tabelle nach.
+Kein Server, keine echten Passwörter (außer einer rein clientseitigen
+Formalität beim Admin-Login). Der eingeloggte User wird in `localStorage`
+unter `ts_user` gespeichert und bleibt über Reloads hinweg erhalten.
 
-`requireAuth(role)` in `app.js` leitet ohne gültigen User auf `index.html` um.
+- Ein echter Reload von `index.html` bei bestehender Session leitet
+  automatisch zum passenden Dashboard weiter (Session bleibt bestehen).
+- Navigation über den Browser-**Zurück**-Button auf `index.html`
+  unterdrückt diesen Auto-Redirect gezielt (Prüfung über
+  `performance.getEntriesByType('navigation')[0].type === 'back_forward'`),
+  damit man dort einen anderen Account wählen kann, ohne sofort wieder
+  weitergeleitet zu werden.
 
-## CSS Design System
+`requireAuth(role)` in `app.js` leitet ohne gültigen User (oder falscher
+Rolle) auf `index.html` um.
+
+## CSS Design System — "Technical / Blueprint"
 
 CSS Custom Properties in `:root` (definiert in `style.css`):
 
 ```
---primary / --primary-dark / --primary-light / --primary-border
---bg / --surface / --border / --border-subtle
---tx-1 (darkest) … --tx-4 (lightest)
---red / --red-bg / --red-border
---r-xs … --r-full  (Border-Radius-Skala)
---sh-xs … --sh-xl  (Box-Shadow-Skala)
+--ink-950 … --ink-600   Oberflächen (dunkles Blueprint-Navy)
+--line / --line-soft    Rahmen/Trennlinien
+--paper / --muted / --faint   Textfarben
+--signal / --signal-bg / --signal-ink   Akzentfarbe (Amber)
+--red / --red-bg / --red-border         Fehler/Danger
+--status-*               6 Status-Akzentfarben (siehe unten)
+--font-display / --font-body / --font-mono   Space Grotesk / IBM Plex Sans / IBM Plex Mono
+--r-xs … --r-full        Border-Radius-Skala (klein, technisch)
+--sh-sm … --sh-xl        Box-Shadow-Skala (nur für Overlays)
 ```
 
-**Responsive Breakpoints:**
+**Statusfarben leben ausschließlich in einem einzigen CSS-Block** (kein
+JS-Duplikat mehr): Jedes Element mit `data-status="…"` erbt automatisch
+`--accent` / `--accent-bg` / `--accent-border` aus dem `[data-status="…"]`-
+Regelblock am Anfang von `style.css`. Badge, Ticket-Karte, Timeline-Knoten
+und Kanban-Spalte lesen alle aus denselben drei Variablen.
+
+**Responsive Breakpoints** (unverändert in Struktur/Reihenfolge):
 - `≤ 768px` — Tablet
-- `≤ 480px` — Mobile (inkl. Modal Bottom-Sheet)
+- `≤ 480px` — Mobile (inkl. Modal Bottom-Sheet, Kanban-Spaltenbreite)
 - `≤ 400px` — Tiny Screens
-- `@media (hover: none) and (pointer: coarse)` — Touch-Geräte
+- `@media (hover: none) and (pointer: coarse)` — Touch-Geräte (u.a. zeigt
+  dies den Kanban-Quick-Status-Button statt Drag & Drop)
 - `@supports (padding-bottom: env(safe-area-inset-bottom))` — iOS Safe Area
+
+## Kernfeatures
+
+**Status-Timeline** (`renderTimeline()` in `app.js`): horizontaler Stepper
+auf jeder Ticket-Karte, zeigt die Position im 6-stufigen Workflow. Bei
+Statusänderungen wird das bestehende DOM-Element gezielt gepatcht
+(`updateTimelineDOM()`/`patchTicketCard()`) statt neu gerendert, damit die
+Füllung sichtbar animiert statt zu springen.
+
+**Kanban-Board** (`admin.html`, nur Admin): Liste/Board-Umschalter, 6
+Spalten nach `STATUS_ORDER`. Drag & Drop über native HTML5-DnD-API; auf
+Touch-Geräten ersetzt ein Tap-Menü (`openQuickStatusMenu()`) das Draggen.
+Beide Wege laufen über denselben `Store.updateTicket()`-Pfad wie das
+Edit-Modal.
 
 ## Cloudflare Deployment
 
-- **D1 Binding:** Variable `DB` → Database `ticketsystem-db` (ID: `9fcadd93-...`)
-- **Muss im Cloudflare Pages Dashboard** unter Settings → Functions → D1 bindings
-  konfiguriert sein (nicht nur in `wrangler.toml`)
-- Remote D1 Query: via MCP-Tool `d1_database_query` (wenn Node nicht im PATH)
+- Rein statisches Pages-Deployment (`pages_build_output_dir = "public"`),
+  keine D1-Bindings, keine Functions.
+- `npm run dev` → `wrangler pages dev public/`
+- `npm run deploy` → `wrangler pages deploy public/`
 - GitHub Remote: `https://github.com/paulberger353/ticketsystem-showcase.git`
