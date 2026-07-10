@@ -19,19 +19,9 @@ function logout() {
   location.href = 'index.html';
 }
 
-/* Status-Farben ──────────────────────────────────────────────────────────── */
-const STATUS_STYLES = {
-  'Konzept':                 { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' },
-  'Entwicklung':             { bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
-  'Testen':                  { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
-  'Optimieren':              { bg: '#ffedd5', color: '#c2410c', border: '#fdba74' },
-  'Bereit zu Abnahme':       { bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
-  'Abgenommen durch Kunden': { bg: '#dcfce7', color: '#15803d', border: '#86efac' },
-};
-
+/* Status-Farben leben ausschließlich in style.css ([data-status]-Block) ────── */
 function statusBadge(status) {
-  const s = STATUS_STYLES[status] || STATUS_STYLES['Konzept'];
-  return `<span class="status-badge" style="background:${s.bg};color:${s.color};border-color:${s.border}">${esc(status)}</span>`;
+  return `<span class="status-badge" data-status="${esc(status)}">${esc(status)}</span>`;
 }
 
 /* Hilfsfunktionen ────────────────────────────────────────────────────────── */
