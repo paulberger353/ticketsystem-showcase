@@ -6,6 +6,7 @@
   <title>Ticketsystem – Anmelden</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
+  <script src="store.js"></script>
 </head>
 <body class="login-page">
 
@@ -105,10 +106,12 @@
       <div class="modal-title">Admin-Anmeldung</div>
       <div class="modal-subtitle">Bitte geben Sie das Administrator-Passwort ein, um fortzufahren.</div>
       <label class="modal-label" for="adminPassword">Passwort</label>
-      <div class="modal-input-wrap">
+      <div class="modal-input-wrap modal-input-wrap-inline">
         <input type="password" id="adminPassword" placeholder="••••••••"
                onkeydown="handlePasswordKey(event)" autocomplete="current-password">
+        <button type="button" class="btn-fill-password" onclick="fillAdminPassword()">Passwort einfügen</button>
       </div>
+      <p class="modal-hint">Demo-Passwort: <code>admin</code></p>
       <div id="adminPwError" class="modal-error" style="display:none">
         Falsches Passwort – bitte erneut versuchen.
       </div>
@@ -127,6 +130,8 @@
       } catch {}
     })();
 
+    Store.init();
+
     function openAdminModal() {
       const modal = document.getElementById('adminModal');
       const input = document.getElementById('adminPassword');
@@ -140,6 +145,12 @@
     function closeAdminModal(e) {
       if (e && e.target !== document.getElementById('adminModal')) return;
       document.getElementById('adminModal').classList.remove('open');
+    }
+
+    function fillAdminPassword() {
+      const input = document.getElementById('adminPassword');
+      input.value = 'admin';
+      input.focus();
     }
 
     function handlePasswordKey(e) {
@@ -164,27 +175,27 @@
     }
 
     async function login(username) {
-      const allBtns = document.querySelectorAll('.account-btn');
-      allBtns.forEach(b => (b.disabled = true));
       const errBox = document.getElementById('loginError');
       errBox.style.display = 'none';
 
       try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Login fehlgeschlagen');
-        localStorage.setItem('ts_user', JSON.stringify(data.user));
-        location.href = data.user.role === 'admin' ? 'admin.html' : 'client.html';
+        await Store.init();
+        const user = Store.findUserByUsername(username);
+        if (!user) throw new Error('Benutzer nicht gefunden');
+        localStorage.setItem('ts_user', JSON.stringify(user));
+        location.href = user.role === 'admin' ? 'admin.html' : 'client.html';
       } catch (err) {
         errBox.textContent = 'Fehler: ' + err.message;
         errBox.style.display = 'block';
-        allBtns.forEach(b => (b.disabled = false));
       }
     }
+
+    window.addEventListener('pageshow', e => {
+      if (e.persisted) {
+        closeAdminModal();
+        document.getElementById('loginError').style.display = 'none';
+      }
+    });
   </script>
 </body>
 </html>
