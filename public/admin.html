@@ -215,6 +215,7 @@
 
     function renderFilterBar(tickets) {
       const bar = document.getElementById('filterBar');
+      const prevText = document.getElementById('filterText')?.value || '';
       const usedStatuses = STATUS_ORDER.filter(s => tickets.some(t => t.status === s));
       bar.innerHTML = `
         <div class="filter-search-wrap">
@@ -234,6 +235,7 @@
           ).join('')}
         </div>`;
       bar.style.display = 'flex';
+      if (prevText) document.getElementById('filterText').value = prevText;
     }
 
     function setStatusFilter(btn, status) {
@@ -296,6 +298,7 @@
               </button>
             </div>
           </div>
+          ${renderTimeline(t.status)}
           ${t.description ? `<div class="ticket-body">${esc(t.description)}</div>` : ''}
           <div class="comments-section">
             <button class="comments-toggle" onclick="toggleComments(this, ${t.id})">
@@ -444,10 +447,22 @@
         return;
       }
 
-      Store.updateTicket(editingTicketId, { title, status, platform, description });
+      const before       = allTickets.find(t => t.id === editingTicketId);
+      const statusChanged = before && before.status !== status;
+      const updated       = Store.updateTicket(editingTicketId, { title, status, platform, description });
       closeEditModal();
       showToast('Ticket aktualisiert');
-      await loadDashboard();
+
+      allTickets = Store.getTickets(currentUser);
+      renderStats(document.getElementById('statsBar'), allTickets);
+      renderFilterBar(allTickets);
+
+      const staysVisible = !activeStatusFilter || activeStatusFilter === status;
+      if (statusChanged && staysVisible && document.getElementById(`ticket-${updated.id}`)) {
+        patchTicketCard(updated);
+      } else {
+        applyFilter();
+      }
     }
   </script>
 </body>

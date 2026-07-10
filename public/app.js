@@ -24,6 +24,70 @@ function statusBadge(status) {
   return `<span class="status-badge" data-status="${esc(status)}">${esc(status)}</span>`;
 }
 
+/* Status-Timeline ────────────────────────────────────────────────────────── */
+function renderTimeline(status) {
+  const idx      = STATUS_ORDER.indexOf(status);
+  const progress = idx / (STATUS_ORDER.length - 1);
+  const nodes = STATUS_ORDER.map((s, i) => {
+    const cls = ['timeline-node'];
+    if (i <= idx) cls.push('done');
+    if (i === idx) cls.push('current');
+    return `<span class="${cls.join(' ')}" title="${esc(s)}"></span>`;
+  }).join('');
+  return `
+    <div class="status-timeline" data-status="${esc(status)}" style="--progress:${progress}">
+      <div class="timeline-track">
+        <div class="timeline-rail"></div>
+        <div class="timeline-fill"></div>
+        ${nodes}
+      </div>
+      <span class="timeline-label">${esc(status)}</span>
+    </div>`;
+}
+
+/* Patches an existing .status-timeline element in place so the fill/nodes
+   transition instead of jump-cutting (a fresh innerHTML rebuild wouldn't
+   have a "before" state to animate from). */
+function updateTimelineDOM(el, status) {
+  const idx = STATUS_ORDER.indexOf(status);
+  el.dataset.status = status;
+  el.style.setProperty('--progress', idx / (STATUS_ORDER.length - 1));
+  el.querySelectorAll('.timeline-node').forEach((node, i) => {
+    node.classList.toggle('done', i <= idx);
+    node.classList.toggle('current', i === idx);
+    node.title = STATUS_ORDER[i];
+  });
+  const label = el.querySelector('.timeline-label');
+  if (label) label.textContent = status;
+}
+
+/* Patches a rendered .ticket-card in place after a Store mutation, so the
+   timeline can animate instead of being torn down and recreated. */
+function patchTicketCard(ticket) {
+  const card = document.getElementById(`ticket-${ticket.id}`);
+  if (!card) return;
+  card.dataset.status = ticket.status;
+
+  const titleEl = card.querySelector('.ticket-title');
+  if (titleEl) titleEl.textContent = ticket.title;
+
+  const badge = card.querySelector('.status-badge');
+  if (badge) { badge.dataset.status = ticket.status; badge.textContent = ticket.status; }
+
+  const bodyEl = card.querySelector('.ticket-body');
+  if (bodyEl) bodyEl.textContent = ticket.description;
+
+  const timeline = card.querySelector('.status-timeline');
+  if (timeline) updateTimelineDOM(timeline, ticket.status);
+
+  const editBtn = card.querySelector('.btn-secondary[data-id]');
+  if (editBtn) {
+    editBtn.dataset.status      = ticket.status;
+    editBtn.dataset.title       = ticket.title;
+    editBtn.dataset.description = ticket.description;
+  }
+}
+
 /* Hilfsfunktionen ────────────────────────────────────────────────────────── */
 function fmtDate(dt) {
   if (!dt) return '';
