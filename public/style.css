@@ -1034,12 +1034,8 @@ body {
 /* ─── KANBAN BOARD ────────────────────────────────────────────────────────────── */
 .kanban-board {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 240px;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 12px;
-  -webkit-overflow-scrolling: touch;
 }
 .kanban-column {
   background: var(--ink-800);
@@ -1183,7 +1179,7 @@ html                      { scroll-behavior: smooth; }
   .login-card           { max-width: 400px; padding: 34px 28px 30px; }
   #toast                { left: 16px; right: 16px; bottom: 16px; }
   .toast-item           { max-width: 100%; }
-  .kanban-board          { grid-auto-columns: 220px; }
+  .kanban-board          { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ─── RESPONSIVE – MOBILE (≤ 480 px) ───────────────────────────────────────── */
@@ -1262,7 +1258,7 @@ html                      { scroll-behavior: smooth; }
   .filter-search-wrap { max-width: 100%; flex: 1 1 100%; }
   .modal-row { grid-template-columns: 1fr; }
 
-  .kanban-board             { grid-auto-columns: 78vw; }
+  .kanban-board             { grid-template-columns: 1fr; }
 }
 
 /* ─── MOBILE – iOS / TOUCH ENHANCEMENTS ────────────────────────────────────── */
