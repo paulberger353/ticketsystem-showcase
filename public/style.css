@@ -1262,9 +1262,7 @@ html                      { scroll-behavior: smooth; }
   .filter-search-wrap { max-width: 100%; flex: 1 1 100%; }
   .modal-row { grid-template-columns: 1fr; }
 
-  /* Kanban: native DnD is unreliable on touch — show quick-status button, disable dragging */
   .kanban-board             { grid-auto-columns: 78vw; }
-  .kanban-card-quick-btn    { display: block; }
 }
 
 /* ─── MOBILE – iOS / TOUCH ENHANCEMENTS ────────────────────────────────────── */
@@ -1284,7 +1282,10 @@ html                      { scroll-behavior: smooth; }
   .btn-sm            { min-height: 36px; }
   .btn-danger.btn-sm { min-height: 34px; }
   .view-toggle-btn   { min-height: 40px; }
-  .kanban-card-quick-btn { min-height: 36px; }
+
+  /* Native drag-and-drop is unreliable on touch — show the quick-status
+     button instead and don't rely on dragging to change a ticket's status */
+  .kanban-card-quick-btn { display: block; min-height: 36px; }
 
   /* Remove hover card-lift on touch – avoids stuck hover state */
   .ticket-card:hover { border-color: var(--line-soft); }
