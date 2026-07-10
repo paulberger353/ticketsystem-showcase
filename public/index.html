@@ -128,6 +128,12 @@
   <script>
     (function () {
       try {
+        // Arriving via browser Back/Forward means the user deliberately left the
+        // dashboard to pick a different account — don't bounce them straight back.
+        // A real reload or a freshly typed/linked visit should still auto-redirect
+        // so an existing session survives a hard refresh.
+        const nav = performance.getEntriesByType('navigation')[0];
+        if (nav && nav.type === 'back_forward') return;
         const u = JSON.parse(localStorage.getItem('ts_user'));
         if (u) location.href = u.role === 'admin' ? 'admin.html' : 'client.html';
       } catch {}
