@@ -1,5 +1,5 @@
 # ── Cloudflare / Wrangler ─────────────────────────────────────────────────────
-# Enthält lokale D1-SQLite-Datenbanken, Auth-Tokens und Miniflare-State
+# Enthält Pages-Build- und Miniflare-Cache-State
 .wrangler/
 
 # ── Node.js ───────────────────────────────────────────────────────────────────
@@ -14,13 +14,6 @@ dist/
 *.secret
 *.secrets
 wrangler.local.toml
-
-# ── SQLite-Datenbanken (lokale D1-Daten) ─────────────────────────────────────
-*.sqlite
-*.sqlite3
-*.sqlite-shm
-*.sqlite-wal
-*.db
 
 # ── Betriebssystem ────────────────────────────────────────────────────────────
 .DS_Store

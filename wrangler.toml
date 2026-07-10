@@ -1,8 +1,3 @@
 name = "ticketsystem"
 pages_build_output_dir = "public"
 compatibility_date = "2025-05-01"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "ticketsystem-db"
-database_id = "9fcadd93-f9f7-4d3c-be3d-1d061deb9ccf"
